@@ -9,8 +9,8 @@ namespace testCmdFrame
     class Node
     {
         public int StateNumber;
-        public Dictionary<char, Node> PrevTransition = new Dictionary<char, Node>();
-        public Dictionary<char, Node> NextTransition = new Dictionary<char, Node>();
+        public Dictionary<char, List<Node>> PrevTransition = new Dictionary<char,List<Node>>();
+        public Dictionary<char, List<Node>> NextTransition = new Dictionary<char, List<Node>>();
 
 
         public static int FIRSTNODE = -1;
@@ -36,14 +36,15 @@ namespace testCmdFrame
             else
             {
                 CurrentNodeIndex++;
-                nodes[CurrentNodeIndex].StateNumber = stateNumber;
-                if (CurrentNodeIndex>=Node.nodes.Count)                     ///to refill nodes
+                if (CurrentNodeIndex >= Node.nodes.Count)                     ///to refill nodes
                 {
                     for (int i = 0; i < 10; i++)
                     {
                         nodes.Add(new Node(0));
                     }
                 }
+                nodes[CurrentNodeIndex].StateNumber = stateNumber;
+                
                 
                 return CurrentNodeIndex;
             }
@@ -53,8 +54,19 @@ namespace testCmdFrame
         {
             node.StateNumber = Node.FIRSTNODE;
             Node lastNode = new Node(Node.LASTNODE);
-            node.NextTransition.Add(Node.NullTransit, lastNode);
-            lastNode.PrevTransition.Add(Node.NullTransit, node);
+            node.AddNodeToNextTransitionList(Node.NullTransit,ref lastNode);
+        }
+        public void AddNodeToNextTransitionList(char transition,ref Node addingNode)
+        {
+            if(!this.NextTransition.ContainsKey(transition))
+            {
+                this.NextTransition[transition] = new List<Node>();
+                this.NextTransition[transition].Add(addingNode);
+            }
+            else
+            {
+                this.NextTransition[transition].Add(addingNode);
+            }
         }
         public Node(int stateNumber=-1)
         {
@@ -62,8 +74,7 @@ namespace testCmdFrame
             {
                 StateNumber = Node.FIRSTNODE;
                 Node lastNode = new Node(Node.LASTNODE);
-                this.NextTransition.Add(Node.NullTransit,lastNode);
-                lastNode.PrevTransition.Add(Node.NullTransit, this);
+                this.AddNodeToNextTransitionList(Node.NullTransit,ref lastNode);
             }
             else if(stateNumber == Node.LASTNODE)
             {

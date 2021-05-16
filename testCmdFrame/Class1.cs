@@ -261,9 +261,54 @@ namespace testCmdFrame
             {
                 if (inputCharacters[i] == '(')
                 {
-                    output[0] = characterArrayToString(inputCharacters, i, true,false);
-                    output[1] = characterArrayToString(inputCharacters, i, false,true);
-                    bracketSuccess = true;
+                    ///There are 3 cases here
+                    ///1.abc | (a|b) Here Operator above is |
+                    ///2.abc   (a|b) Here Operator above is P (Concatenation)
+                    ///3.abc*  (a|b) Here opearator is actually P but there is * or + so split the case again
+
+                    if(inputCharacters[i-1]=='*'||inputCharacters[i-1]=='+')            //Here testcase 3 resolved that is abc*(a|b)
+                    {
+                        if(TerminalValue.Contains(inputCharacters[i-2]))
+                        {
+                            //Concatenation
+                            operatorabove = 'P';
+                            output[0] = characterArrayToString(inputCharacters, i-1, true, true);
+                            output[1] = characterArrayToString(inputCharacters, i, false, true);
+                            bracketSuccess = true;
+                            return bracketSuccess;
+                        }
+                        else
+                        {
+                            //add
+                            operatorabove = '|';
+                            output[0] = characterArrayToString(inputCharacters, i - 1, true, true);
+                            output[1] = characterArrayToString(inputCharacters, i, false, true);
+                            bracketSuccess = true;
+                            return bracketSuccess;
+                        }
+
+                    }
+                    else
+                    {
+                        if (TerminalValue.Contains(inputCharacters[i - 1]))
+                        {
+                            //Concatenation
+                            operatorabove = 'P';
+                            output[0] = characterArrayToString(inputCharacters, i, true,false);
+                            output[1] = characterArrayToString(inputCharacters, i, false, true);
+                            bracketSuccess = true;
+                            return bracketSuccess;
+                        }
+                        else
+                        {
+                            //add
+                            operatorabove = '|';
+                            output[0] = characterArrayToString(inputCharacters, i, true,false);
+                            output[1] = characterArrayToString(inputCharacters, i, false, true);
+                            bracketSuccess = true;
+                            return bracketSuccess;
+                        }
+                    }
                 }
 
             }
@@ -376,10 +421,10 @@ namespace testCmdFrame
             Console.WriteLine("Add Symbols to nodes " + inputSymbols);
             Node sendNode = Node.nodes[Node.getaNodeIndex()];                           //Just a node
             Node.ConvertToRealList(ref sendNode);                                       //Node wh ts and tf
-            Node sendingLastNode = sendNode.NextTransition[Node.NullTransit];
+            Node sendingLastNode = sendNode.NextTransition[Node.NullTransit][0];
             sendNode.NextTransition.Remove(Node.NullTransit);
             Node addFirstNode = Node.nodes[Node.getaNodeIndex(++usedstates)];
-            sendNode.NextTransition.Add(Node.NullTransit, addFirstNode);
+            sendNode.AddNodeToNextTransitionList(Node.NullTransit, ref addFirstNode);
             int numberOfPlus = 0;
             foreach(char c in inputSymbols)
             {
@@ -389,8 +434,8 @@ namespace testCmdFrame
             for(int i=0;i<=numberOfPlus*2;i+=2)
             {
                 Node addNode = Node.nodes[Node.getaNodeIndex(++usedstates)];
-                addFirstNode.NextTransition.Add(inputSymbols[i], addNode);
-                addNode.NextTransition.Add(Node.NullTransit,sendingLastNode);
+                addFirstNode.AddNodeToNextTransitionList(inputSymbols[i], ref addNode);
+                addNode.AddNodeToNextTransitionList(Node.NullTransit,ref sendingLastNode);
             }
             return sendNode;
 
@@ -400,7 +445,7 @@ namespace testCmdFrame
             Console.WriteLine("Product Symbols to nodes " + inputSymbols);
             Node sendNode = Node.nodes[Node.getaNodeIndex()];                           //Just a node
             Node.ConvertToRealList(ref sendNode);
-            Node sendingLastNode = sendNode.NextTransition[Node.NullTransit];
+            Node sendingLastNode = sendNode.NextTransition[Node.NullTransit][0];
             int numberOfTerminals=0;
             foreach(char c in inputSymbols)
             {
@@ -408,35 +453,53 @@ namespace testCmdFrame
             }
             Node current = Node.nodes[Node.getaNodeIndex(++usedstates)];
             sendNode.NextTransition.Remove(Node.NullTransit);
-            sendNode.NextTransition.Add(Node.NullTransit, current);
+            sendNode.AddNodeToNextTransitionList(Node.NullTransit,ref current);
             for (int i=0;i<numberOfTerminals;i++)
             {
                 Node nextNode = Node.nodes[Node.getaNodeIndex(++usedstates)];
-                current.NextTransition.Add(inputSymbols[i],nextNode);
+                current.AddNodeToNextTransitionList(inputSymbols[i], ref nextNode);
                 current = nextNode;
             }
-            current.NextTransition.Add(Node.NullTransit, sendingLastNode);
+            current.AddNodeToNextTransitionList(Node.NullTransit, ref sendingLastNode);
             return sendNode;
         }
         Node ConvertKlienStarSymbolsToNode(char[] inputSymbols)
         {
+            ///Tasks to do here
+            ///conside a*
+            ///here the single node Function will give ts->(&)1->(a)2->tf
+            ///1)Now here since its a Klienstar even First symbol is  final state so point it to tf
+            ///2)And make 2nd state point itself to the symbol a
+
             Console.WriteLine("klienstaring : " + inputSymbols);
             Node sendNode = ConvertSinglesymbolToNode(inputSymbols[0]);
-            Node LastButOneNode = sendNode.NextTransition[Node.NullTransit];            //First Node
-            //Now we have states like ts->1->2->tf 2 is final state yes but this is klien star so even epsilon is final so make the state 1 to point at tf too
-            LastButOneNode.NextTransition.Add(Node.NullTransit, LastButOneNode.NextTransition[inputSymbols[0]].NextTransition[Node.NullTransit]);
-            LastButOneNode = LastButOneNode.NextTransition[inputSymbols[0]];            //last but One node
-            LastButOneNode.NextTransition.Add(inputSymbols[0], LastButOneNode);         //add a loop back to klien star
+            Node lastNode = sendNode.NextTransition[Node.NullTransit][0].NextTransition[inputSymbols[0]][0].NextTransition[Node.NullTransit][0];
+
+
+            ///Now we have states like ts->1->2->tf 2 is final state yes but this is klien star 
+            ///So even epsilon is final so make the state 1 to point at tf too
+            
+            Node FirstOneNode = sendNode.NextTransition[Node.NullTransit][0];            //First Node
+            FirstOneNode.AddNodeToNextTransitionList(Node.NullTransit,ref lastNode);
+            
+
+            Node SecondOneNode = FirstOneNode.NextTransition[inputSymbols[0]][0];            //last but One node
+            SecondOneNode.AddNodeToNextTransitionList(inputSymbols[0],ref SecondOneNode);    //add a loop back to klien star
+            
             return sendNode;
 
         }
         Node ConvertKlienPlussmbolsToNode(char[] inputSymbols)
         {
+            ///Tasks to do here
+            ///conside a+
+            ///here the single node Function will give ts->(&)1->(a)2->tf
+            ///1)And make 2nd state point itself to the symbol a
             Console.WriteLine("Klien plusing : " + inputSymbols);
             Node sendNode = ConvertSinglesymbolToNode(inputSymbols[0]);
-            Node LastButOneNode = sendNode.NextTransition[Node.NullTransit];            //First Node
-            LastButOneNode = LastButOneNode.NextTransition[inputSymbols[0]];            //last but One node
-            LastButOneNode.NextTransition.Add(inputSymbols[0], LastButOneNode);         //add a loop back to klien star
+            Node FirstOneNode = sendNode.NextTransition[Node.NullTransit][0];            //First Node
+            Node LastButOneNode = FirstOneNode.NextTransition[inputSymbols[0]][0];            //last but One node
+            LastButOneNode.AddNodeToNextTransitionList(inputSymbols[0], ref LastButOneNode);  //add a loop back to klien star
             return sendNode;
         }
         Node ConvertSinglesymbolToNode(char inputSymbol)
@@ -444,12 +507,15 @@ namespace testCmdFrame
             Console.WriteLine("Single Symbol op : " + inputSymbol);
             Node SendNode = Node.nodes[Node.getaNodeIndex()];
             Node.ConvertToRealList(ref SendNode);
-            Node sendingLastNode = SendNode.NextTransition[Node.NullTransit];
+            Node sendingLastNode = SendNode.NextTransition[Node.NullTransit][0];
             Node singleNode = Node.nodes[Node.getaNodeIndex(++usedstates)];
             SendNode.NextTransition.Remove(Node.NullTransit);
-            SendNode.NextTransition.Add(Node.NullTransit, singleNode);
-            singleNode.NextTransition.Add(inputSymbol, Node.nodes[Node.getaNodeIndex(++usedstates)]);
-            singleNode.NextTransition[inputSymbol].NextTransition.Add(Node.NullTransit, sendingLastNode);
+            SendNode.AddNodeToNextTransitionList(Node.NullTransit, ref singleNode);
+            Node secondNode = Node.nodes[Node.getaNodeIndex(++usedstates)];
+            singleNode.AddNodeToNextTransitionList(inputSymbol,ref secondNode);
+          //singleNode.NextTransition.Add(inputSymbol, Node.nodes[Node.getaNodeIndex(++usedstates)]);
+            singleNode.NextTransition[inputSymbol][0].AddNodeToNextTransitionList(Node.NullTransit,ref sendingLastNode);
+          //singleNode.NextTransition[inputSymbol].NextTransition.Add(Node.NullTransit, sendingLastNode);
             return SendNode;
         }
         #endregion
@@ -459,95 +525,139 @@ namespace testCmdFrame
         {
             Console.WriteLine("Solving ADDnodes");
 
-            //startup a Final List to attach and send so take refernce of first non head node
+            ///startup Of sending node and adding a head node called
+            ///FirstNode (Note this is not head but which will nohave any null transit)
+            ///map this first node to null transit with sending node
+            ///and start attaching the left and right with sendFirstNode
             Node SendingNode = Node.nodes[Node.getaNodeIndex()];
             Node.ConvertToRealList(ref SendingNode);
-            Node SendingLastNode = SendingNode.NextTransition[Node.NullTransit];
-            Node SendFirstNode = Node.nodes[Node.getaNodeIndex()];
-            SendFirstNode.NextTransition.Remove(Node.NullTransit);
-            SendFirstNode.NextTransition.Add(Node.NullTransit,SendFirstNode);
+            Node SendingLastNode = SendingNode.NextTransition[Node.NullTransit][0];
+            Node SendingfirstNode = Node.nodes[Node.getaNodeIndex(++usedstates)];
+            SendingNode.NextTransition.Remove(Node.NullTransit);
+            SendingNode.AddNodeToNextTransitionList(Node.NullTransit, ref SendingfirstNode);
 
+            ///Now take The left nodes first node and collect all the nodes connected to 
+            ///it and attach to the first node of our sendingFirst node
+            ///Do it same to the Right node now
+            Node leftFirstNode = left.NextTransition[Node.NullTransit][0];
+            Node rightFirstNode = right.NextTransition[Node.NullTransit][0];
 
-            //take the first real node (not head node)
-            Node LeftRealFirstNode = left.NextTransition[Node.NullTransit];
-            Node RightRealFirstNode = right.NextTransition[Node.NullTransit];
-            List<Node> LeftFinalPointingNodes = new List<Node>();
-            List<Node> RightFinalPointingNodes = new List<Node>();
-
-            GetAllNodesPointingAtLastNode(left,ref LeftFinalPointingNodes);                 //get all left's last pointers to rearrange
-            GetAllNodesPointingAtLastNode(right, ref RightFinalPointingNodes);              //get all rights last pointers to rearrange
-
-            foreach(Node n in LeftFinalPointingNodes)
+            foreach(char Transitions in leftFirstNode.NextTransition.Keys)
             {
-                n.NextTransition.Remove(Node.NullTransit);
-                n.NextTransition.Add(Node.NullTransit, SendingLastNode);
-            }
-            foreach (Node n in RightFinalPointingNodes)
-            {
-                n.NextTransition.Remove(Node.NullTransit);
-                n.NextTransition.Add(Node.NullTransit, SendingLastNode);
-            }
-
-            /// Now to Address the first nodes combination
-            /// Since we are using dictionary and they can have unique keys we have
-            /// to make sure that the existing key will be retained and problem will be addressd as below
-
-            foreach (char Transition in LeftRealFirstNode.NextTransition.Keys)
-            {
-                try
+                foreach(Node nodesConnected in leftFirstNode.NextTransition[Transitions])
                 {
-                    SendFirstNode.NextTransition.Add(Transition, LeftRealFirstNode.NextTransition[Transition]);
+                    Node ConnectedNode = nodesConnected;
+                    SendingfirstNode.AddNodeToNextTransitionList(Transitions,ref ConnectedNode);
                 }
-                catch (ArgumentException a)
+            }
+            foreach (char Transitions in rightFirstNode.NextTransition.Keys)
+            {
+                foreach (Node nodesConnected in rightFirstNode.NextTransition[Transitions])
                 {
-                    Node ArgumentWithSameKeyNode = SendFirstNode.NextTransition[Transition];
-                    foreach (char SecondTransitions in LeftRealFirstNode.NextTransition[Transition].NextTransition.Keys)
-                    {
-                        ArgumentWithSameKeyNode.NextTransition.Add()
-                    }
+                    Node ConnectedNode = nodesConnected;
+                    SendingfirstNode.AddNodeToNextTransitionList(Transitions, ref ConnectedNode);
                 }
             }
 
+            ///Now We have all nodes to be connected to first node conected
+            ///Remaining part is to connect alll the nodes which are reaching
+            ///To thier respective final nodes to the Final node of sending node
+            List<Node> leftFinalNodes = new List<Node>();
+            GetAllNodesPointingAtLastNode(left,ref leftFinalNodes);
+            List<Node> rightFinalNodes = new List<Node>();
+            GetAllNodesPointingAtLastNode(right, ref rightFinalNodes);
+
+            foreach(Node finalNode in leftFinalNodes)
+            {
+                finalNode.NextTransition.Remove(Node.NullTransit);
+                finalNode.AddNodeToNextTransitionList(Node.NullTransit,ref SendingLastNode);
+            }
+            foreach (Node finalNode in rightFinalNodes)
+            {
+                finalNode.NextTransition.Remove(Node.NullTransit);
+                finalNode.AddNodeToNextTransitionList(Node.NullTransit, ref SendingLastNode);
+            }
 
 
-            Console.WriteLine("Displaying Left Node : -");
-            DebugDisplayNode(left);
-            return left;
+            return SendingNode;
         }
         Node ConcatNodesAttachMain(Node left, Node right, char operatorabove)
         {
             Console.WriteLine("Solving ConcatNodes");
 
-
-            //startup a Final Node to attach
+            ///startup Of sending node and adding a head node called
+            ///FirstNode (Note this is not head but which will nohave any null transit)
+            ///map this first node to null transit with sending node
+            ///and start attaching the left and right with sendFirstNode
             Node SendingNode = Node.nodes[Node.getaNodeIndex()];
             Node.ConvertToRealList(ref SendingNode);
+            Node SendingLastNode = SendingNode.NextTransition[Node.NullTransit][0];
+            Node SendingfirstNode = Node.nodes[Node.getaNodeIndex(++usedstates)];
+            SendingNode.NextTransition.Remove(Node.NullTransit);
+            SendingNode.AddNodeToNextTransitionList(Node.NullTransit, ref SendingfirstNode);
+
+            
 
             //take the first real node (not head node)
-            Node LeftRealFirstNode = left.NextTransition[Node.NullTransit];
-            Node RightRealFirstNode = right.NextTransition[Node.NullTransit];
+            Node leftFirstNode = left.NextTransition[Node.NullTransit][0];
+            Node rightFirstNode = right.NextTransition[Node.NullTransit][0];
 
             //get all nodes which are pointing at last
-            List<Node> LeftRealLastNodes = new List<Node>();
-            GetAllNodesPointingAtLastNode(left, ref LeftRealLastNodes);
-            foreach (Node node in LeftRealLastNodes)
+            List<Node> LeftFinalNodes = new List<Node>();
+            GetAllNodesPointingAtLastNode(left, ref LeftFinalNodes);
+            List<Node> rightFinalNodes = new List<Node>();
+            GetAllNodesPointingAtLastNode(right, ref rightFinalNodes);
+
+            ///So here Concept for Concatenation is Make the usual startup 
+            ///1)Then the first node of startup is pointed at leftNode's first's all transition
+            ///2)delete the firstnode of left if not required then collect all the nodes pointing at end of left node
+            ///3)make them point at rights second node with respective transitions
+            ///4) Now we have to cleanup the mess with making all the right Final nodes to point at sending nodes ka final
+          
+            
+            //step 1
+            foreach (char Transitions in leftFirstNode.NextTransition.Keys)
             {
-                node.NextTransition.Remove(Node.NullTransit);
-                node.NextTransition.Add(Node.NullTransit, RightRealFirstNode);
+                foreach (Node nodesConnected in leftFirstNode.NextTransition[Transitions])
+                {
+                    Node ConnectedNode = nodesConnected;
+                    SendingfirstNode.AddNodeToNextTransitionList(Transitions,ref ConnectedNode);
+                }
             }
-            Console.WriteLine("Displaying Left Node : -");
-            DebugDisplayNode(left);
-            return null;
+            //step 2
+            foreach(Node FinalNode in LeftFinalNodes)
+            {
+                FinalNode.NextTransition.Remove(Node.NullTransit);
+                foreach (char Transitions in rightFirstNode.NextTransition.Keys)
+                {
+                    foreach (Node nodesConnected in leftFirstNode.NextTransition[Transitions])
+                    {
+                        Node conectedNode = nodesConnected;
+                        FinalNode.AddNodeToNextTransitionList(Transitions,ref conectedNode);
+                    }
+                }
+
+            }
+            Node.nodes.Remove(rightFirstNode);
+
+            //step 3
+            foreach (Node finalNode in rightFinalNodes)
+            {
+                finalNode.NextTransition.Remove(Node.NullTransit);
+                finalNode.AddNodeToNextTransitionList(Node.NullTransit, ref SendingLastNode);
+            }
+
+            return SendingNode;
         }
         Node KleinStarNodesAttachMain(Node left, Node right, char operatorabove)
         {
-            //TODO Handle () in Right
+            //TODO Handle ()* in Right
             Console.WriteLine("Solving KlienStarNodes");
             return null;
         }
         Node KleinPlusNodesAttachMain(Node left, Node right, char operatorabove)
         {
-            //TODO Handle () in Right
+            //TODO Handle ()+ in Right
             Console.WriteLine("Solving KlienPlusNodes");
             return null;
 
@@ -583,22 +693,24 @@ namespace testCmdFrame
                 ListOfNodes.Add(PrevPointNode);
                 return;
             }
-            foreach(char transition in MainNode.NextTransition.Keys)
+            
+            foreach (char transition in MainNode.NextTransition.Keys)
             {
-                GetAllNodesPointingAtLastNode(MainNode.NextTransition[transition], ref ListOfNodes,MainNode);
+                foreach(Node TransitionNode in MainNode.NextTransition[transition])
+                {
+                    GetAllNodesPointingAtLastNode(TransitionNode, ref ListOfNodes, MainNode);
+                }
             }
-            foreach (char transition in MainNode.PrevTransition.Keys)
-            {
-                GetAllNodesPointingAtLastNode(MainNode.PrevTransition[transition], ref ListOfNodes, MainNode);
-            }
+           
         }
+        
         #endregion
 
         public static void Main(string[] args)
         {
             Class1 solv = new Class1();
-            Node sol = solv.SolveTheREGEX("ab|(a|b)");
-            //solv.DebugDisplayNode(sol);
+            Node sol = solv.SolveTheREGEX("abc(a|b)");
+            solv.DebugDisplayNode(sol);
             Console.ReadKey();
         }
         public void DebugDisplayNode(Node CurrentNode,Node PrevNode = null)
@@ -617,16 +729,16 @@ namespace testCmdFrame
                 Console.WriteLine("Last Reached : "+CurrentNode.StateNumber);
                 return;
             }
-            foreach(char transition in CurrentNode.NextTransition.Keys)
+            foreach (char transition in CurrentNode.NextTransition.Keys)
             {
-                Console.WriteLine("Transiting from Node: "+ CurrentNode.StateNumber+" to next node through-> " + transition);
-                DebugDisplayNode(CurrentNode.NextTransition[transition],CurrentNode);
+                foreach (Node TransitionNode in CurrentNode.NextTransition[transition])
+                {
+
+                    Console.WriteLine("Currently in the Node : "+CurrentNode.StateNumber+" And Transiting to : "+TransitionNode.StateNumber+" By the Character transition: "+transition);
+                    DebugDisplayNode(TransitionNode, CurrentNode);
+                }
             }
-            foreach (char transition in CurrentNode.PrevTransition.Keys)
-            {
-                Console.WriteLine("Transiting to Previous node through-> " + transition);
-                DebugDisplayNode(CurrentNode.NextTransition[transition],CurrentNode);
-            }
+
         }
     }
 }
