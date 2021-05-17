@@ -12,6 +12,8 @@ namespace testCmdFrame
         public List<char> TerminalValue = new List<char>();
         public Node solvedNode = new Node();
         public int usedstates = 0;
+
+
         Node SolveTheREGEX(string input)
         {
             Node solved;
@@ -23,6 +25,8 @@ namespace testCmdFrame
             else
                 return null;
         }
+
+
         #region Main Methods
         private bool ValidateAndInitialiseInput(string input)
         {
@@ -616,12 +620,12 @@ namespace testCmdFrame
           
             
             //step 1
-            foreach (char Transitions in leftFirstNode.NextTransition.Keys)
+            foreach (char Transition in leftFirstNode.NextTransition.Keys)
             {
-                foreach (Node nodesConnected in leftFirstNode.NextTransition[Transitions])
+                foreach (Node nodesConnected in leftFirstNode.NextTransition[Transition])
                 {
                     Node ConnectedNode = nodesConnected;
-                    SendingfirstNode.AddNodeToNextTransitionList(Transitions,ref ConnectedNode);
+                    SendingfirstNode.AddNodeToNextTransitionList(Transition,ref ConnectedNode);
                 }
             }
             //step 2
@@ -630,7 +634,7 @@ namespace testCmdFrame
                 FinalNode.NextTransition.Remove(Node.NullTransit);
                 foreach (char Transitions in rightFirstNode.NextTransition.Keys)
                 {
-                    foreach (Node nodesConnected in leftFirstNode.NextTransition[Transitions])
+                    foreach (Node nodesConnected in rightFirstNode.NextTransition[Transitions])
                     {
                         Node conectedNode = nodesConnected;
                         FinalNode.AddNodeToNextTransitionList(Transitions,ref conectedNode);
@@ -688,8 +692,13 @@ namespace testCmdFrame
         }
         void GetAllNodesPointingAtLastNode(Node MainNode,ref List<Node> ListOfNodes,Node PrevPointNode = null)
         {
-            if(MainNode.StateNumber == Node.LASTNODE)
+            if (MainNode == PrevPointNode)                               //When Epsilon*or + is found and looping to same
             {
+                return;
+            }
+            if (MainNode.StateNumber == Node.LASTNODE)
+            {
+                
                 ListOfNodes.Add(PrevPointNode);
                 return;
             }
@@ -709,7 +718,11 @@ namespace testCmdFrame
         public static void Main(string[] args)
         {
             Class1 solv = new Class1();
-            Node sol = solv.SolveTheREGEX("abc(a|b)");
+            string Problem;
+            Console.WriteLine("Enter the Regular expression");
+            Problem = Console.ReadLine();
+            Problem.Remove(Problem.Length - 1, 1);
+            Node sol = solv.SolveTheREGEX(Problem);
             solv.DebugDisplayNode(sol);
             Console.ReadKey();
         }
