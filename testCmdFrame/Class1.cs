@@ -55,7 +55,6 @@ namespace testCmdFrame
                             break;
                         case ' ':
                             Console.WriteLine("Whitespaces are invalid"); return false;
-                            break;
                         case ')':
                             { }
                             break;
@@ -567,9 +566,9 @@ namespace testCmdFrame
             ///Remaining part is to connect alll the nodes which are reaching
             ///To thier respective final nodes to the Final node of sending node
             List<Node> leftFinalNodes = new List<Node>();
-            GetAllNodesPointingAtLastNode(left,ref leftFinalNodes);
+            GetAllNodesPointingAtSomeNode(left,ref leftFinalNodes,Node.NullTransit, Node.LASTNODE);
             List<Node> rightFinalNodes = new List<Node>();
-            GetAllNodesPointingAtLastNode(right, ref rightFinalNodes);
+            GetAllNodesPointingAtSomeNode(right, ref rightFinalNodes,Node.NullTransit, Node.LASTNODE);
 
             foreach(Node finalNode in leftFinalNodes)
             {
@@ -608,9 +607,9 @@ namespace testCmdFrame
 
             //get all nodes which are pointing at last
             List<Node> LeftFinalNodes = new List<Node>();
-            GetAllNodesPointingAtLastNode(left, ref LeftFinalNodes);
+            GetAllNodesPointingAtSomeNode(left, ref LeftFinalNodes,Node.NullTransit,Node.LASTNODE);
             List<Node> rightFinalNodes = new List<Node>();
-            GetAllNodesPointingAtLastNode(right, ref rightFinalNodes);
+            GetAllNodesPointingAtSomeNode(right, ref rightFinalNodes,Node.NullTransit, Node.LASTNODE);
 
             ///So here Concept for Concatenation is Make the usual startup 
             ///1)Then the first node of startup is pointed at leftNode's first's all transition
@@ -690,13 +689,13 @@ namespace testCmdFrame
             }
             return Endreslt;
         }
-        void GetAllNodesPointingAtLastNode(Node MainNode,ref List<Node> ListOfNodes,Node PrevPointNode = null)
+        void GetAllNodesPointingAtSomeNode(Node MainNode,ref List<Node> ListOfNodes,char desiredTransition,int desiredStateNumber,Node PrevPointNode = null)
         {
             if (MainNode == PrevPointNode)                               //When Epsilon*or + is found and looping to same
             {
                 return;
             }
-            if (MainNode.StateNumber == Node.LASTNODE)
+            if (MainNode.StateNumber == desiredStateNumber)
             {
                 
                 ListOfNodes.Add(PrevPointNode);
@@ -705,9 +704,12 @@ namespace testCmdFrame
             
             foreach (char transition in MainNode.NextTransition.Keys)
             {
-                foreach(Node TransitionNode in MainNode.NextTransition[transition])
+                if (transition == desiredTransition)
                 {
-                    GetAllNodesPointingAtLastNode(TransitionNode, ref ListOfNodes, MainNode);
+                    foreach (Node TransitionNode in MainNode.NextTransition[transition])
+                    {
+                        GetAllNodesPointingAtSomeNode(TransitionNode, ref ListOfNodes, desiredTransition,desiredStateNumber,MainNode);
+                    }
                 }
             }
            
