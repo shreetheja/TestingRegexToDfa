@@ -60,12 +60,20 @@ namespace testCmdFrame
         {
             if(!this.NextTransition.ContainsKey(transition))
             {
+                
                 this.NextTransition[transition] = new List<Node>();
                 this.NextTransition[transition].Add(addingNode);
             }
             else
             {
-                this.NextTransition[transition].Add(addingNode);
+                if (!this.NextTransition[transition].Contains(addingNode))
+                {
+                    this.NextTransition[transition].Add(addingNode);
+                }
+                else
+                {
+                    //Found the same node so ignore
+                }
             }
         }
         public Node(int stateNumber=-1)

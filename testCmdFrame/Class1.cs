@@ -243,14 +243,17 @@ namespace testCmdFrame
                     {
                         if (inputCharacters[i] == ')')
                         {
-                            if (inputCharacters[i + 1] == '+' || inputCharacters[i + 1] == '*')                 
+                            if (inputCharacters[i + 1] == '+' || inputCharacters[i + 1] == '*')
                             {
                                 i++;                                                                //include klien star  or plus
                                 operatorabove = 'P';
-                                output[0] = characterArrayToString(inputCharacters,i,true,true);
+                                output[0] = characterArrayToString(inputCharacters, i, true, true);
                             }
                             else
-                                output[0] = characterArrayToString(inputCharacters,i,true,true);
+                            {
+                                operatorabove = 'P';
+                                output[0] = characterArrayToString(inputCharacters, i, true, true);
+                            }
                             break;
                         }
 
@@ -655,14 +658,40 @@ namespace testCmdFrame
         Node KleinStarNodesAttachMain(Node left, Node right, char operatorabove)
         {
             //TODO Handle ()* in Right
+            ///So the concept here is to connect the ts and tf with
+            ///a Epsilon transition thats all the solution for now
+            ///right has ()* so ignore
+            Node SendingNode = left;
+            Node SendingFirstNode = SendingNode.NextTransition[Node.NullTransit][0];
+            Node SendingLastNode = getLastNode(SendingNode);
+
+            ///1.Make the lastnode point to frist node with epsilon transit 
+            ///2.make first node to point at last node to make it final stare
+            SendingLastNode.AddNodeToNextTransitionList(Node.Epsilon,ref SendingFirstNode);
+            SendingFirstNode.AddNodeToNextTransitionList(Node.NullTransit, ref SendingLastNode);
+            
+            
+
             Console.WriteLine("Solving KlienStarNodes");
-            return null;
+            return SendingNode;
         }
         Node KleinPlusNodesAttachMain(Node left, Node right, char operatorabove)
         {
             //TODO Handle ()+ in Right
+            ///So the concept here is to connect the ts and tf with
+            ///a Epsilon transition thats all the solution for now
+            ///right has ()+ so ignore
+            Node SendingNode = left;
+            Node SendingFirstNode = SendingNode.NextTransition[Node.NullTransit][0];
+            Node SendingLastNode = getLastNode(SendingNode);
+
+            ///1.Make the lastnode point to frist node with epsilon transit 
+            SendingLastNode.AddNodeToNextTransitionList(Node.Epsilon, ref SendingFirstNode);
+
+
+
             Console.WriteLine("Solving KlienPlusNodes");
-            return null;
+            return SendingNode;
 
         }
         Node SingleAttachMain(Node left, Node right, char operatorabove)
@@ -714,6 +743,24 @@ namespace testCmdFrame
             }
            
         }
+        Node getLastNode(Node MainNode)
+        {
+            Node last = MainNode;
+            foreach (char transition in MainNode.NextTransition.Keys)
+            {
+                foreach (Node TransitionNode in MainNode.NextTransition[transition])
+                {
+                    if (last.StateNumber == Node.LASTNODE)
+                    {
+                        if(last.StateNumber == Node.LASTNODE)
+                        return last;
+                        last = getLastNode(MainNode);
+                    }
+                    
+                }
+            }
+            return last;
+        }
         
         #endregion
 
@@ -724,7 +771,7 @@ namespace testCmdFrame
             Console.WriteLine("Enter the Regular expression");
             Problem = Console.ReadLine();
             Problem.Remove(Problem.Length - 1, 1);
-            Node sol = solv.SolveTheREGEX(Problem);
+            Node sol = solv.SolveTheREGEX("(a*|b)ab");
             solv.DebugDisplayNode(sol);
             Console.ReadKey();
         }
