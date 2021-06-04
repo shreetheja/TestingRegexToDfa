@@ -214,111 +214,65 @@ namespace testCmdFrame
         bool TryBracketSplit(char[] inputCharacters, out string[] output,ref char operatorabove)
         {
             bool bracketSuccess = false;
-            output = new string[100];
-            if(inputCharacters[0] == '(')
+            output = new string[3];
+            if (inputCharacters[0] == '(')
             {
-               
-                if(inputCharacters[inputCharacters.Length-1]==')')                              //for Test case (a|b)
-                {   
-                    bracketSuccess = true;
-                    operatorabove = ')';
-                    output[0] = InsideRecentBrackets(inputCharacters);
-                    output[1] = "()";
-                    return bracketSuccess;
-                }
-                else if(inputCharacters[inputCharacters.Length - 2] == ')')                     //For Test case (a|b)*
+                if(checkExpEnclosedInBrackets(inputCharacters))
                 {
-                    if(inputCharacters[inputCharacters.Length - 1] == '+'|| inputCharacters[inputCharacters.Length - 1] == '*')//make sure that last symbol is a * or +
+                    if (inputCharacters[inputCharacters.Length - 1] == ')')                      //for Test case (a|b)
                     {
-                        operatorabove = inputCharacters[inputCharacters.Length-1];
+                        bracketSuccess = true;
+                        operatorabove = ')';
                         output[0] = InsideRecentBrackets(inputCharacters);
                         output[1] = "()";
-                        return true;
+                    }
+                    else if (inputCharacters[inputCharacters.Length - 2] == ')')                     //For Test case (a|b)*
+                    {
+                        if (inputCharacters[inputCharacters.Length - 1] == '+' || inputCharacters[inputCharacters.Length - 1] == '*')//make sure that last symbol is a * or +
+                        {
+                            bracketSuccess = true;
+                            operatorabove = inputCharacters[inputCharacters.Length - 1];
+                            output[0] = InsideRecentBrackets(inputCharacters);
+                            output[1] = "()";
+                        }
                     }
                 }
                 else
                 {
-                    int i;
-                    for (i = 0; i < inputCharacters.Length; i++)
-                    {
-                        if (inputCharacters[i] == ')')
-                        {
-                            if (inputCharacters[i + 1] == '+' || inputCharacters[i + 1] == '*')
-                            {
-                                i++;                                                                //include klien star  or plus
-                                operatorabove = 'P';
-                                output[0] = characterArrayToString(inputCharacters, i, true, true);
-                            }
-                            else
-                            {
-                                operatorabove = 'P';
-                                output[0] = characterArrayToString(inputCharacters, i, true, true);
-                            }
-                            break;
-                        }
-
-                    }
+                    //Three test cases (abc)ab,(abc)av,(ab)abc(ab)
+                    operatorabove = 'P';
+                    output = splitBracketsAndNextChar(inputCharacters);
                     bracketSuccess = true;
-                    output[1] = characterArrayToString(inputCharacters, i,false,false);
-                    return bracketSuccess;
+
                 }
             }
-            for (int i = 0; i < inputCharacters.Length; i++)
-            {
-                if (inputCharacters[i] == '(')
+           else
+           {
+                //abc(a|b) or abc(a|(a|b)) or abc(a|(a|b))abc
+                //should see whether there is a bracket in equation
+                bool bracketFound = false;
+                int i = 0;
+                for(i  =0;i<inputCharacters.Length;i++)
                 {
-                    ///There are 3 cases here
-                    ///1.abc | (a|b) Here Operator above is |
-                    ///2.abc   (a|b) Here Operator above is P (Concatenation)
-                    ///3.abc*  (a|b) Here opearator is actually P but there is * or + so split the case again
-
-                    if(inputCharacters[i-1]=='*'||inputCharacters[i-1]=='+')            //Here testcase 3 resolved that is abc*(a|b)
+                    if (inputCharacters[i] == '(')
                     {
-                        if(TerminalValue.Contains(inputCharacters[i-2]))
-                        {
-                            //Concatenation
-                            operatorabove = 'P';
-                            output[0] = characterArrayToString(inputCharacters, i-1, true, true);
-                            output[1] = characterArrayToString(inputCharacters, i, false, true);
-                            bracketSuccess = true;
-                            return bracketSuccess;
-                        }
-                        else
-                        {
-                            //add
-                            operatorabove = '|';
-                            output[0] = characterArrayToString(inputCharacters, i - 1, true, true);
-                            output[1] = characterArrayToString(inputCharacters, i, false, true);
-                            bracketSuccess = true;
-                            return bracketSuccess;
-                        }
-
-                    }
-                    else
-                    {
-                        if (TerminalValue.Contains(inputCharacters[i - 1]))
-                        {
-                            //Concatenation
-                            operatorabove = 'P';
-                            output[0] = characterArrayToString(inputCharacters, i, true,false);
-                            output[1] = characterArrayToString(inputCharacters, i, false, true);
-                            bracketSuccess = true;
-                            return bracketSuccess;
-                        }
-                        else
-                        {
-                            //add
-                            operatorabove = '|';
-                            output[0] = characterArrayToString(inputCharacters, i, true,false);
-                            output[1] = characterArrayToString(inputCharacters, i, false, true);
-                            bracketSuccess = true;
-                            return bracketSuccess;
-                        }
+                        bracketFound = true;
+                        break;
                     }
                 }
+                if (bracketFound)
+                {
+                    operatorabove = 'P';
+                    output[0] = characterArrayToString(inputCharacters, i, true, false);
+                    output[1] = characterArrayToString(inputCharacters, i, false, true);
+                    bracketSuccess = true;
+                }
+                else
+                    return bracketSuccess;  //no bracket found
 
             }
             return bracketSuccess;
+
         }
         void TryKlienSplit(char[] inputCharacters, out string[] output, ref char operatorabove)
         {
@@ -353,7 +307,6 @@ namespace testCmdFrame
             }
 
         }
-
         #endregion
 
         #region custom string Methods
@@ -418,6 +371,65 @@ namespace testCmdFrame
                 returnString += array[i];
             }
             return returnString;
+        }
+        string[] splitBracketsAndNextChar(char[] array)
+        {
+            string[] outputFill = new string[3];
+            int i = 0;
+            bool isKlienPresent = false;
+            for(i =0;i<array.Length;i++)
+            {
+                if(array[i] == ')')
+                {
+                    if (array[i + 1] == '*' || array[i + 1] == '+')
+                        isKlienPresent = true;
+                    break;
+                }
+            }
+            if(isKlienPresent)
+            {
+                outputFill[0] = characterArrayToString(array, i + 1, true, true);
+                outputFill[1] = characterArrayToString(array, i + 1, false, false);
+            }
+            else
+            {
+                outputFill[0] = characterArrayToString(array, i, true, true);
+                outputFill[1] = characterArrayToString(array, i, false, false);
+            }
+
+            return outputFill;
+        }
+        bool checkNoBrackInMiddle(char[] inputCharacters)
+        {
+            if (inputCharacters[0] == '(' && (inputCharacters[inputCharacters.Length-1]==')'|| inputCharacters[inputCharacters.Length - 2] == ')'))
+            {
+                for(int i= 0;i < inputCharacters.Length;i++)
+                {
+                    if(inputCharacters[i] ==')'&& i<(inputCharacters.Length-2))
+                    {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+        bool checkExpEnclosedInBrackets(char[] inputCharacters)
+        {
+            for(int i=0;i<inputCharacters.Length;i++)
+            {
+                if(inputCharacters[i]==')')
+                {
+                    if(i==inputCharacters.Length-1 || i==inputCharacters.Length-2)          //if the brackets are fully enclosing with () or ()*
+                    {
+                        return true;
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }
+            }
+            return false;
         }
         #endregion
 
@@ -568,12 +580,13 @@ namespace testCmdFrame
             ///Now We have all nodes to be connected to first node conected
             ///Remaining part is to connect alll the nodes which are reaching
             ///To thier respective final nodes to the Final node of sending node
-            List<Node> leftFinalNodes = new List<Node>();
-            GetAllNodesPointingAtSomeNode(left,ref leftFinalNodes,Node.NullTransit, Node.LASTNODE);
-            List<Node> rightFinalNodes = new List<Node>();
-            GetAllNodesPointingAtSomeNode(right, ref rightFinalNodes,Node.NullTransit, Node.LASTNODE);
+            ///And also the transitions from final node shud also be taken in account and be added to left first node
+            List<Node> leftFinalNodes = left.GetAllNodesPointingAtSomeNode(Node.NullTransit, Node.LASTNODE);                                              //nodes poiting to tf
 
-            foreach(Node finalNode in leftFinalNodes)
+            List<Node> rightFinalNodes = right.GetAllNodesPointingAtSomeNode(Node.NullTransit, Node.LASTNODE);                                             //nodes poiting to tf
+
+
+            foreach (Node finalNode in leftFinalNodes)
             {
                 finalNode.NextTransition.Remove(Node.NullTransit);
                 finalNode.AddNodeToNextTransitionList(Node.NullTransit,ref SendingLastNode);
@@ -582,6 +595,21 @@ namespace testCmdFrame
             {
                 finalNode.NextTransition.Remove(Node.NullTransit);
                 finalNode.AddNodeToNextTransitionList(Node.NullTransit, ref SendingLastNode);
+            }
+            ///address the epsilon transites in the Node left and right
+            List<Node> LeftepsilonNodes = left.GetEpsilonTransits();
+            List<Node> RightepsilonNodes = right.GetEpsilonTransits();
+
+
+            foreach (Node nod in LeftepsilonNodes)
+            {
+                nod.NextTransition.Remove(Node.Epsilon);
+                nod.AddNodeToNextTransitionList(Node.Epsilon,ref SendingfirstNode);
+            }
+            foreach (Node nod in RightepsilonNodes)
+            {
+                nod.NextTransition.Remove(Node.Epsilon);
+                nod.AddNodeToNextTransitionList(Node.Epsilon, ref SendingfirstNode);
             }
 
 
@@ -609,18 +637,20 @@ namespace testCmdFrame
             Node rightFirstNode = right.NextTransition[Node.NullTransit][0];
 
             //get all nodes which are pointing at last
-            List<Node> LeftFinalNodes = new List<Node>();
-            GetAllNodesPointingAtSomeNode(left, ref LeftFinalNodes,Node.NullTransit,Node.LASTNODE);
-            List<Node> rightFinalNodes = new List<Node>();
-            GetAllNodesPointingAtSomeNode(right, ref rightFinalNodes,Node.NullTransit, Node.LASTNODE);
+            List<Node> LeftFinalNodes = left.GetAllNodesPointingAtSomeNode( Node.NullTransit, Node.LASTNODE);
+            List<Node> rightFinalNodes = right.GetAllNodesPointingAtSomeNode( Node.NullTransit, Node.LASTNODE);
+
+
+
+
 
             ///So here Concept for Concatenation is Make the usual startup 
             ///1)Then the first node of startup is pointed at leftNode's first's all transition
             ///2)delete the firstnode of left if not required then collect all the nodes pointing at end of left node
             ///3)make them point at rights second node with respective transitions
             ///4) Now we have to cleanup the mess with making all the right Final nodes to point at sending nodes ka final
-          
-            
+
+
             //step 1
             foreach (char Transition in leftFirstNode.NextTransition.Keys)
             {
@@ -653,7 +683,28 @@ namespace testCmdFrame
                 finalNode.AddNodeToNextTransitionList(Node.NullTransit, ref SendingLastNode);
             }
 
+            ///////Here we will adress the issue when ther is a klien *
+            ///////or klien + present in the mainNode
+            List<Node> LeftepsilonNodes = left.GetEpsilonTransits();
+            List<Node> RightepsilonNodes = right.GetEpsilonTransits();
+
+            foreach (Node nod in LeftepsilonNodes)
+            {
+                nod.NextTransition.Remove(Node.Epsilon);
+                nod.AddNodeToNextTransitionList(Node.Epsilon, ref SendingfirstNode);
+            }
+            foreach (Node rightNode in RightepsilonNodes)
+            {
+                rightNode.NextTransition.Remove(Node.Epsilon);
+                foreach (Node LeftFinalNode in LeftFinalNodes)
+                {
+                    Node leftFNode = LeftFinalNode;
+                    rightNode.AddNodeToNextTransitionList(Node.Epsilon, ref leftFNode);
+                }
+            }
+
             return SendingNode;
+
         }
         Node KleinStarNodesAttachMain(Node left, Node right, char operatorabove)
         {
@@ -663,16 +714,14 @@ namespace testCmdFrame
             ///right has ()* so ignore
             Node SendingNode = left;
             Node SendingFirstNode = SendingNode.NextTransition[Node.NullTransit][0];
-            Node SendingLastNode = getLastNode(SendingNode);
+            Node SendingLastNode = SendingNode.getaNodeBystateNumber(Node.LASTNODE);
+            List<Node> FinalStateNodes = left.GetAllNodesPointingAtSomeNode( Node.NullTransit, Node.LASTNODE);
 
-            ///1.Make the lastnode point to frist node with epsilon transit 
-            ///2.make first node to point at last node to make it final stare
-            SendingLastNode.AddNodeToNextTransitionList(Node.Epsilon,ref SendingFirstNode);
+            foreach (Node node in FinalStateNodes)
+            {
+                node.AddNodeToNextTransitionList(Node.Epsilon,ref SendingFirstNode);
+            }
             SendingFirstNode.AddNodeToNextTransitionList(Node.NullTransit, ref SendingLastNode);
-            
-            
-
-            Console.WriteLine("Solving KlienStarNodes");
             return SendingNode;
         }
         Node KleinPlusNodesAttachMain(Node left, Node right, char operatorabove)
@@ -683,16 +732,14 @@ namespace testCmdFrame
             ///right has ()+ so ignore
             Node SendingNode = left;
             Node SendingFirstNode = SendingNode.NextTransition[Node.NullTransit][0];
-            Node SendingLastNode = getLastNode(SendingNode);
+            Node SendingLastNode = SendingNode.getaNodeBystateNumber(Node.LASTNODE);
+            List<Node> FinalStateNodes = left.GetAllNodesPointingAtSomeNode(Node.NullTransit, Node.LASTNODE);
 
-            ///1.Make the lastnode point to frist node with epsilon transit 
-            SendingLastNode.AddNodeToNextTransitionList(Node.Epsilon, ref SendingFirstNode);
-
-
-
-            Console.WriteLine("Solving KlienPlusNodes");
+            foreach (Node node in FinalStateNodes)
+            {
+                node.AddNodeToNextTransitionList(Node.Epsilon, ref SendingFirstNode);
+            }
             return SendingNode;
-
         }
         Node SingleAttachMain(Node left, Node right, char operatorabove)
         {
@@ -702,7 +749,7 @@ namespace testCmdFrame
         }
         #endregion
 
-        #region Linked List Helper Methods
+        #region Join Call
         Node JoinNodes(Node LeftMost,Node RightMost,char operatorAbove)
         {
             Node Endreslt;
@@ -718,89 +765,24 @@ namespace testCmdFrame
             }
             return Endreslt;
         }
-        void GetAllNodesPointingAtSomeNode(Node MainNode,ref List<Node> ListOfNodes,char desiredTransition,int desiredStateNumber,Node PrevPointNode = null)
-        {
-            if (MainNode == PrevPointNode)                               //When Epsilon*or + is found and looping to same
-            {
-                return;
-            }
-            if (MainNode.StateNumber == desiredStateNumber)
-            {
-                
-                ListOfNodes.Add(PrevPointNode);
-                return;
-            }
-            
-            foreach (char transition in MainNode.NextTransition.Keys)
-            {
-                if (transition == desiredTransition)
-                {
-                    foreach (Node TransitionNode in MainNode.NextTransition[transition])
-                    {
-                        GetAllNodesPointingAtSomeNode(TransitionNode, ref ListOfNodes, desiredTransition,desiredStateNumber,MainNode);
-                    }
-                }
-            }
-           
-        }
-        Node getLastNode(Node MainNode)
-        {
-            Node last = MainNode;
-            foreach (char transition in MainNode.NextTransition.Keys)
-            {
-                foreach (Node TransitionNode in MainNode.NextTransition[transition])
-                {
-                    if (last.StateNumber == Node.LASTNODE)
-                    {
-                        if(last.StateNumber == Node.LASTNODE)
-                        return last;
-                        last = getLastNode(MainNode);
-                    }
-                    
-                }
-            }
-            return last;
-        }
-        
         #endregion
 
         public static void Main(string[] args)
         {
             Class1 solv = new Class1();
-            string Problem;
-            Console.WriteLine("Enter the Regular expression");
-            Problem = Console.ReadLine();
-            Problem.Remove(Problem.Length - 1, 1);
-            Node sol = solv.SolveTheREGEX("(a*|b)ab");
-            solv.DebugDisplayNode(sol);
+            string Problem = "";
+
+            while (Problem != "~")
+            {
+                Console.WriteLine("Enter the Regular expression");
+                Problem = Console.ReadLine();
+                Problem.Remove(Problem.Length - 1, 1);
+                Node sol = solv.SolveTheREGEX(Problem);
+                List<Node> EpsilonTrasnitNodes = sol.GetEpsilonTransits(true);
+                sol.DisplayNodes();
+            }
             Console.ReadKey();
         }
-        public void DebugDisplayNode(Node CurrentNode,Node PrevNode = null)
-        {
-            if(PrevNode == null)
-            {
-                Console.WriteLine("Starting Traverse ");
-            }
-            if(CurrentNode == PrevNode)
-            {
-                Console.WriteLine("There is a klein transition: ");
-                return;
-            }
-            if(CurrentNode.StateNumber == Node.LASTNODE)
-            {
-                Console.WriteLine("Last Reached : "+CurrentNode.StateNumber);
-                return;
-            }
-            foreach (char transition in CurrentNode.NextTransition.Keys)
-            {
-                foreach (Node TransitionNode in CurrentNode.NextTransition[transition])
-                {
-
-                    Console.WriteLine("Currently in the Node : "+CurrentNode.StateNumber+" And Transiting to : "+TransitionNode.StateNumber+" By the Character transition: "+transition);
-                    DebugDisplayNode(TransitionNode, CurrentNode);
-                }
-            }
-
-        }
+         
     }
 }
